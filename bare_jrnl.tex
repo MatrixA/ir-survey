@@ -64,6 +64,8 @@
 % draft mode.
 %
 \documentclass[journal]{IEEEtran}
+\usepackage{graphicx}
+\bibliographystyle{IEEEtran}
 %
 % If IEEEtran.cls has not been installed into the LaTeX system files,
 % manually specify the path to it like:
@@ -371,7 +373,7 @@
 % paper title
 % can use linebreaks \\ within to get better formatting as desired
 % Do not put math or special symbols in the title.
-\title{Bare Demo of IEEEtran.cls for Journals}
+\title{A Survey on Distributed Computation Frameworks}
 %
 %
 % author names and IEEE memberships
@@ -383,14 +385,7 @@
 % was not built to handle multiple paragraphs
 %
 
-\author{Michael~Shell,~\IEEEmembership{Member,~IEEE,}
-        John~Doe,~\IEEEmembership{Fellow,~OSA,}
-        and~Jane~Doe,~\IEEEmembership{Life~Fellow,~IEEE}% <-this % stops a space
-\thanks{M. Shell is with the Department
-of Electrical and Computer Engineering, Georgia Institute of Technology, Atlanta,
-GA, 30332 USA e-mail: (see http://www.michaelshell.org/contact.html).}% <-this % stops a space
-\thanks{J. Doe and J. Doe are with Anonymous University.}% <-this % stops a space
-\thanks{Manuscript received April 19, 2005; revised December 27, 2012.}}
+\author{Yongbin Liu}
 
 % note the % following the last \IEEEmembership and also \thanks - 
 % these prevent an unwanted space from occurring between the last author name
@@ -591,7 +586,53 @@ Subsubsection text here.
 % floats. This can be corrected via the \fnbelowfloat command of the
 % stfloats package.
 
+\section{Map-Reduce Like Frameworks}
 
+\section{Graph Model}
+
+\section{State-Based Distributed Computation Frameworks}
+With the boom of large scale deep artificial convolutional networks, great demands for large distributed training systems emerged. The training process of most machine learning algorithms come down to gradient descent methods. During each iteration, parameters of machine learning models are updated. When the scale of dataset is very large, the computation of gradients are distributed across multiple hosts. The traditional frameworks like Map-Reduce and Spark mainly train machine learning models with synchronous iterative steps. In each step, the gradients are computed across different servers and then get average gradients. The new gradients are updated to all servers and new iterations start. 
+
+However, the efficiency of these frameworks is limited owing to the synchronous iterative mechanism. The execution time of each step is determined by the slowest server which is called \textit{straggler}. These kinds of models obey the bulk synchronous parallel (BSP) \cite{valiant1990bridging} framework. Another trial was proposed that all the parallel workers in a cluster do their own tasks and update parameters by themselves which is called asynchronous parallel model. However, it's difficult to ensure the gradients to converge since the parameters of all of the workers are not consistent. As a trade-off between high-performance and gradient convergence, a new protocol called staleness synchronous parallel was utilized. It allows users to define a threshold to coordinate the steps of all workers. Only if the iteration counts of all workers do not exceed the threshold, the training process will continue, otherwise the faster workers will stop to wait for the stragglers.
+
+\begin{figure}
+    \centering
+    \includegraphics[height=0.3\textwidth, width=\linewidth]{SSP_ASP_BSP.png}
+    \caption{The comparison of three data parallel models, in which the green grids demonstrate the computation time interval and the orange ones indicate an idle time interval. During the blue time interval, workers communicate to share parameters.}
+    \label{fig:my_label}
+\end{figure}
+
+All of the shared parameters and dependency in the large-scale machine learning systems are stored using distributed in-memory database and fault-tolerance mechanism are designed for server crashes. The provider of shared parameters is called parameter servers.
+
+\subsection{Piccolo Programming Model}
+
+The earliest distributed computation model that utilizes a key-value database to share parameters of models is piccolo \cite{Piccolo}. It takes the K-means cluster algorithm as an example to show how the intermediate results are shared by all of the workers and improve the performance of Map-Reduce system due to the avoidance of disk I/O. The authors also implemented a distributed crawler system using piccolo to show how workers conduct in-memory computation using shared key-value data. Although this model soon faded, it provided probabilities for state-based learning systems.
+
+\subsection{YahooLDA}
+
+YahooLDA \cite{ahmed2012scalable} is the first-generation parameter-server like system that utilize distributed in-memory database to share parameters across multiple servers. It used memcached as the distributed key-value database. The parameters of the latent variable machine learning model are stored and synchronized with memcached. In industry, Facebook scaled up memcached to a distributed memory-cached system \cite{nishtala2013scaling} and it showed good scalability of memcached.
+
+The first generation of parameter-server models still takes the BSP protocol, hence there exists efficient issues and the overhead of communication is heavy.
+
+\subsection{Petuum}
+
+The second generation parameter servers such as Distbelief \cite{DDN} are mainly application specific. For example, tensorflow \cite{abadi2016tensorflow} which originated from Distbelief, is designed for training large scale neural networks.
+
+Besides the application-specific feature, models \cite{xing2015petuum} during this period also piloted the staleness synchronous parallel (SSP) mechanism to improve the performance. \cite{xing2015petuum} also proved the gradient convergence using SSP mechanism.
+
+\subsection{Parameter Server}
+
+The third generation parameter server could be represented by the \cite{SDML}, which developed the first two generations of models and added useful features which could enable users to trade off between performance, consistence and gradient convergence.
+
+It provides a complete framework that supports fault tolerance, loading balance and scalability. When new nodes are added to the cluster, it's no need to restart the whole job. And the framework does it best to reduce the network traffic.
+
+With the development of parameter servers, the modern distributed computation systems could support training of unprecedentedly huge machine learning algorithms. As shown in figure \ref{comparison_parameter_servers}, the scale of parameters have grew by over $10^7$ times.
+
+\begin{figure}
+\includegraphics[width=\linewidth]{comparison_parameter_servers.png}
+\caption{The comparison among large scale machine learning systems}
+\label{comparison_parameter_servers}
+\end{figure}
 
 \section{Conclusion}
 The conclusion goes here.
@@ -662,13 +703,9 @@ The authors would like to thank...
 % <OR> manually copy in the resultant .bbl file
 % set second argument of \begin to the number of references
 % (used to reserve space for the reference number labels box)
-\begin{thebibliography}{1}
 
-\bibitem{IEEEhowto:kopka}
-H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
-  0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
+\bibliography{citation}
 
-\end{thebibliography}
 
 % biography section
 % 
