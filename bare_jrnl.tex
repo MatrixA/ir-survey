@@ -66,6 +66,7 @@
 \documentclass[journal]{IEEEtran}
 \usepackage{graphicx}
 \bibliographystyle{IEEEtran}
+\usepackage{indentfirst}
 %
 % If IEEEtran.cls has not been installed into the LaTeX system files,
 % manually specify the path to it like:
@@ -589,6 +590,41 @@ Subsubsection text here.
 \section{Map-Reduce Like Frameworks}
 
 \section{Graph Model}
+Many practical computing problems concern large graphs, e.g., the Web graph and social networks. While MapReduce is ill-suited for graph prcessing since many iterations are needed for parallel graph processing and materializations of intermediate results at every MapReduce iteration harm performance. In the following, we briefly describe three classical graph computation model.
+
+\subsection{Pregel abstraction}
+In Pregel\cite{Pregel}, programs are expressed as a sequence of iterations called supersteps which is inspired by Bulk Synchronous Parallel model(BSP). Fig. \ref{pregel} illustrates an abstract model of a sequence of supersteps used in Pregel. The vertices compute in parallel within each superstep. Each vertax reads messages sent to itself in previous superstep and executes the same user-defined function, then it can send messages to its neighbors in the next superstep, or mutate the topology of the graph. A vertex will vote to halt if it has no further work to do and algorithm termination is based on every vertex voting to halt. The vertex-centric approach is flexible and easy to deliver to users.
+\begin{figure}
+	\includegraphics[width=\linewidth]{pregel.jpg}
+	\caption{a model of superstep processing}
+	\label{pregel}
+\end{figure}
+
+The performance, scalability and fault-tolerance of Pregel have already been satisfactory for graphs with billions of vertices\cite{Pregel}. There still has some work to do like avoiding the cost of faster workers having to wait frequently at inter-superstep barriers.
+\subsection{GraphLab abstraction}
+By targeting common patterns in ML like sparse data dependencies and asynchronous iterative computation, GraphLab presents an asynchronous distributed shared-memory framework in which vertex-programs share access to a distributed graph with data stored on every vertex and edge.
+
+GraphLab provides a choice of three data consistency models which enable the user to balance performance and data consistency. And it also provides an asynchronous computation model in which vertex-programs can schedule neighboring vertex-programs to be executed in the future. The dynamic scheduling can reduce the performance degradation of load imbalance problem which exists in Pregel\cite{Pregel}.
+
+GraphLab supports the representation of structured data dependencies, iterative computation, and flexible scheduling. While the process of extending the GraphLab framework to the distributed setting faces some new challenges including efficient graph partitioning, loading balancing, distributed locking and fault tolerance\cite{GraphLab}. 
+\subsection{PowerGraph abstraction}
+Graphs derived from real world often exhibit power-law degree distributions, which are difficult to partition and can lead to work imbalance and increasing communication and storage. Both Pregel and GaphLab place a graph on a cluster by edge-cuts which perform poorly on power-law graphs.
+
+PowerGraph eliminates the degree dependence of the vertex-program by directly exploiting the GAS decomposition to factor vertex-programs over edges\cite{PowerGraph}. The GAS model represents three conceptual phases of a vertex-program: Gather, Apply, and Scatter. Fig. \ref{powergraph1} is an example of the PageRank program implemented in PowerGraph\cite{PageRank}.
+\begin{figure}
+	\includegraphics[width=\linewidth]{powergraph1.jpg}
+	\caption{PageRank vertex-program implemented in PowerGraph}
+	\label{powergraph1}
+\end{figure}
+\begin{figure}
+	\includegraphics[width=\linewidth]{powergraph2.jpg}
+	\caption{an example of edge-cut and vertex-cut of a graph into three parts}
+	\label{powergraph2}
+\end{figure}
+
+Because GraphLab and Pregel use edge-cuts, their communication volume is proportional to the number of ghosts: the replicated vertex and edge data along the partition boundary. In Fig. \ref{powergraph2} we construct a three-way cut of a four vertex graph: edge-cut requires more communication with five ghost vertices and all edge data being replicated while vertex-cut only results in two ghost vertices. When using a vertex-cut, gather function runs locally on each machine and then the result of sum is sent from each mirror to the master. The master runs the apply function to update vertex data and then sends the new information to all mirrors. Finally the scatter phase is run in parallel on mirrors to update the data on adjacent edges\cite{PowerGraph}.
+
+PowerGraph’s total computation volume and runtime of one iteration of PageRank on the Twitter follower graph is much less than Pregel and GraphLab. As a consequence, PowerGraph is robust to high-degree vertices.
 
 \section{State-Based Distributed Computation Frameworks}
 With the boom of large scale deep artificial convolutional networks, great demands for large distributed training systems emerged. The training process of most machine learning algorithms come down to gradient descent methods. During each iteration, parameters of machine learning models are updated. When the scale of dataset is very large, the computation of gradients are distributed across multiple hosts. The traditional frameworks like Map-Reduce and Spark mainly train machine learning models with synchronous iterative steps. In each step, the gradients are computed across different servers and then get average gradients. The new gradients are updated to all servers and new iterations start. 
@@ -704,7 +740,7 @@ The authors would like to thank...
 % set second argument of \begin to the number of references
 % (used to reserve space for the reference number labels box)
 
-\bibliography{citation}
+\bibliography{ref}
 
 
 % biography section
