@@ -763,6 +763,91 @@ With the development of parameter servers, the modern distributed computation sy
 \label{comparison_parameter_servers}
 \end{figure}
 
+\section{Distributed Stream Computing model}
+In the traditional data processing process, data is always collected first, and then placed in the DB. When people need to make a query to the data through the DB, get the answer or do related processing. This seems very reasonable, but the results are very compact, especially in some real-time search application environment, some of the problems similar to the MapReduce offline processing is not well resolved.
+
+However, the efficiency of these frameworks is limited owing to the synchronous iterative mechanism. The execution time of each step is determined by the slowest server which is called \textit{straggler}. These kinds of models obey the bulk synchronous parallel (BSP) \cite{valiant1990bridging} framework. Another trial was proposed that all the parallel workers in a cluster do their own tasks and update parameters by themselves which is called asynchronous parallel model. However, it's difficult to ensure the gradients to converge since the parameters of all of the workers are not consistent. As a trade-off between high-performance and gradient convergence, a new protocol called staleness synchronous parallel was utilized. It allows users to define a threshold to coordinate the steps of all workers. Only if the iteration counts of all workers do not exceed the threshold, the training process will continue, otherwise the faster workers will stop to wait for the stragglers.
+
+\begin{table*}[]
+\begin{tabular}{|l|l|l|l|l|l|}
+\hline
+                         & S4                & STORM                 & SPARK STREAMING     & SAMZA           & HERON          \\ 
+                         \hline
+Open Source Time         & 2010              & 2011                  & 2012                & 2013            & 2016           \\
+Architecture             & de-centralization & weak centralization   & centralization      & centralization  & centralization \\
+Data Processing Model    & event             & tuple                 & object              & object          & tuple          \\
+Granularity              & single record     & single record / batch & micro-batch         & single record   & single record  \\
+Load Balance             & static            & dynamic               & /                   & dynamic         & dynamic        \\
+Message Feedback         & unavailable       & available             & /                   & depend on Kafka & available      \\
+Temporary Result Storage & local             & local                 & local / file system & Kafka           & local          \\
+Routing Strategy         & key               & customize             & /                   & depend on Kafka & customize      \\ 
+\hline
+\end{tabular}
+\end{table*}
+
+All of the shared parameters and dependency in the large-scale machine learning systems are stored using distributed in-memory database and fault-tolerance mechanism are designed for server crashes. The provider of shared parameters is called parameter servers.
+
+\subsection{S4}
+
+Open sourced by Yahoo! in 2010, S4(Simple Scalable Streaming System) is mainly used to solve "cost-per-click" advertisements, and predicts possible click behaviors of users on advertisements through real-time calculation. It is a general-purpose, distributed, scalable, partially fault-tolerant, pluggable platform that allows programmers to easily develop applications for processing continuous unbounded streams of data.
+
+\begin{figure}
+\includegraphics[width=\linewidth]{S4.png}
+\caption{S4 architecture}
+\label{S4}
+\end{figure}
+
+\subsection{Storm}
+
+Storm was open sourced by Twitter in 2011. It is a real-time, highly fault-tolerant and distributed stream data processing system. Storm implements real-time processing of data stream calculations, making up for real-time requirements that cannot be met by batch systems such as Hadoop and Spark.
+
+Storm is divided into two components, Nimbus and Supervisor, both of which are stateless and fast-fail. The same as S4, Storm uses ZooKeeper for task assignment and heartbeat detection. The difference is that Storm uses message feedback mechanism to ensure that data records are completely processed. Storm is widely used in real-time analytics, online machine learning, continuous computing, distributed remote calling and more.
+
+Storm is fast: according to the official website (http://storm.apache.org/ ),a benchmark clocked it at over a million tuples processed per second per node. 
+\begin{figure}
+\includegraphics[width=\linewidth]{stormstreaming.png}
+\caption{Storm architecture}
+\label{Storm}
+\end{figure}
+
+
+\subsection{Spark Streaming}
+
+Spark Streaming is a component of Spark's real-time data for streaming computing. Rather, it does not process streams at once, but divides them into fragments and turns them into small batches of time interval processing. Spark abstracts a continuous data stream called DStream (discrete stream), and a DStream is RDD (short for elastic distributed data set) micro-batch micro-batch, RDD is a distributed set that can be operated in parallel by any function, or can be transformed by a sliding window data (window calculation).
+
+[tag:STORM VS SPARK]
+Storm and Spark focus on quite different application scenarios. Comparing Storm Trident and Spark Streaming, it should be a comparison of apples to apples. Since Spark's RDD is inherently immutable, Spark Streaming implements a method for "batching" incoming updates at user-defined intervals and converting them to their own RDDs. Then Spark's generic parallel operators can perform calculations on these RDDs. This is different from Storm handling each event, and Storm is truly streaming.
+
+All in all, one of the main differences between the two technologies is that Spark performs data parallel computing, while Storm performs task parallel computing. Both designs are trade-offs in their respective fields.
+
+
+\subsection{Samza}
+
+Samza was open sourced by LinkedIn in 2013. Unlike Storm and Spark Streaming, Samza uses a single message as the unit of data stream processing. It is a stream processing framework that is tightly bound to the Apache Kafka messaging system. Although Kafka can be used in many streaming systems, Samza can be designed to take advantage of Kafka's unique architectural advantages and guarantees. This technology provides fault tolerance, buffering, and state storage through Kafka.
+
+Samza's goal is to treat the stream as an accepted message. At the same time, Samza's stream initial element is not a tuple or a DStream, but a message, the stream is divided into partitions, each partition is a sort of read-only message. Sequence, each message has a unique ID (offset), the system also supports batch processing, from the same stream partition to consume several messages in order, although Samza mainly relies on Hadoop's Yarn and Apache Kafka, but its Execution and The Streaming module is pluggable.
+
+\begin{figure}
+\includegraphics[width=\linewidth]{samza.jpeg}
+\caption{Samza architecture}
+\label{Samza}
+\end{figure}
+
+
+\subsection{Heron}
+Due to its own business characteristics, Twitter has a strong demand for real-time. Therefore, a large amount of resources are invested in the flow calculation for development. After the release of the first generation of stream processing system Storm, it has received extensive attention and application. Based on the performance, scale, availability, etc. that Storm encountered in practice, Twitter developed a second-generation stream processing system, Heron, which was open sourced in 2016.
+
+The model of is consistent with Storm and still contains the design of spout and bolt. Twitter thinks this is a good design, so it is still preserved. Topology in Heron is equivalent to the logical execution plan in the database. It becomes a physical execution plan only when it is actually executed.
+In the processing of the tuple, it is still consistent with the Storm, providing at least one and at most one reliability mechanism.The API is fully compatible with Storm, and it took only three months for Twitter to migrate from Storm to Heron.
+
+
+Heron's overall architecture is shown in the figure above. After the topology is submitted, the topology is distributed to different nodes through the scheduler. The previous Storm had a big drawback: it couldn't be integrated on Yarn or Mesos, even if it had Storm On Yarn later. Resources are still not being used reasonably, and multi-tenancy features are dependent on resource management permissions and cannot be implemented. Heron solved the problem from the architecture, and Scheduler is a scheduler for Yarn or Mesos.
+\begin{figure}
+\includegraphics[width=\linewidth]{comparison_parameter_servers.png}
+\caption{The comparison among large scale machine learning systems}
+\label{comparison_parameter_servers}
+\end{figure}
+
 \section{Conclusion}
 The conclusion goes here.
 
